@@ -19,7 +19,7 @@
             </div>
           </div>
           <div class="flip-page lyrics-page">
-            <div class="lyrics-box" ref="mobileLyricsBox">
+            <div class="lyrics-box" ref="mobileLyricsBox" @touchstart="lyricsTouchStart">
               <div v-if="lyrics.length === 0" class="lyric-line">&#9835; No lyrics</div>
               <div v-for="(l, idx) in lyrics" :key="idx"
                    :class="['lyric-line', { active: idx === currentLyricIndex, past: idx < currentLyricIndex }]"
@@ -182,6 +182,8 @@ const flipPage = ref(0)
 const flipStartX = ref(0)
 const flipDeltaX = ref(0)
 const flipAreaWidth = ref(300)
+const lyricsTouchStartY = ref(0)
+const lyricsTouchStartX = ref(0)
 
 const theme = computed(() => themes[config.themeIndex] || themes[0])
 
@@ -258,17 +260,32 @@ function commitSeek() {
 }
 
 function flipTo(page) { flipPage.value = page; flipDeltaX.value = 0 }
+function isLyricsVerticalSwipe(e) {
+  const dx = Math.abs(e.touches[0].clientX - lyricsTouchStartX.value)
+  const dy = Math.abs(e.touches[0].clientY - lyricsTouchStartY.value)
+  return dy > dx * 1.5
+}
 function flipStart(e) {
   flipStartX.value = e.touches[0].clientX
   flipDeltaX.value = 0
   flipAreaWidth.value = flipArea.value ? flipArea.value.offsetWidth : 300
 }
-function flipMove(e) { flipDeltaX.value = e.touches[0].clientX - flipStartX.value }
+function flipMove(e) {
+  if (lyricsTouchStartY.value && isLyricsVerticalSwipe(e)) return
+  flipDeltaX.value = e.touches[0].clientX - flipStartX.value
+}
 function flipEnd() {
+  lyricsTouchStartY.value = 0
+  lyricsTouchStartX.value = 0
   const threshold = flipAreaWidth.value * 0.2
   if (flipDeltaX.value < -threshold && flipPage.value < 1) flipPage.value = 1
   else if (flipDeltaX.value > threshold && flipPage.value > 0) flipPage.value = 0
   flipDeltaX.value = 0
+}
+
+function lyricsTouchStart(e) {
+  lyricsTouchStartY.value = e.touches[0].clientY
+  lyricsTouchStartX.value = e.touches[0].clientX
 }
 
 function onSave() {
@@ -296,7 +313,7 @@ html, body, #app { height: 100%; overflow: hidden }
 }
 
 .gear {
-  position: fixed; top: 16px; right: 16px; z-index: 50;
+  position: fixed; top: 16px; left: 16px; z-index: 50;
   background: rgba(255,255,255,0.08); backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
   width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
@@ -465,8 +482,55 @@ input:focus { border-color: rgba(255,255,255,0.25); }
 .save:hover { filter: brightness(1.1); }
 .version { text-align: right; color: rgba(255,255,255,0.25); font-size: 11px; margin-top: 10px; }
 
-/* Pad / Tablet — compact layout, no bottom clip */
-@media (min-width: 701px) and (max-width: 1200px) {
+/* Phone landscape — compact side-by-side */
+@media (orientation: landscape) and (max-height: 600px) {
+  .app { padding: 0; }
+  .player { flex-direction: row; gap: 16px; max-width: 100vw; width: 100%; padding: 10px 14px; align-items: center; }
+  .album-wrap { width: 140px; height: 140px; }
+  .album-art .placeholder { font-size: 60px; }
+  .card { padding: 12px 16px; flex: 1; min-width: 0; }
+  .song-title { font-size: 15px; }
+  .song-artist { font-size: 11px; }
+  .song-album { font-size: 10px; display: none; }
+  .song-info { margin-bottom: 10px; }
+  .lyrics-box { max-height: 100px; padding: 6px 8px; margin-bottom: 6px; }
+  .lyric-line { font-size: 11px; line-height: 1.6; }
+  .lyric-line.active { font-size: 12px; }
+  .controls { gap: 12px; margin-bottom: 6px; }
+  .play-btn { width: 46px; height: 46px; }
+  .play-btn svg { width: 20px; height: 20px; }
+  .ctrl-btn { padding: 6px; }
+  .ctrl-btn svg { width: 20px; height: 20px; }
+  .vol-slider { width: 200px; height: 2px; }
+  .vol-slider::-webkit-slider-thumb { width: 8px; height: 8px; }
+  .vol-slider::-moz-range-thumb { width: 8px; height: 8px; }
+  .vol-val { display: none; }
+  .progress-section { margin-bottom: 8px; }
+  .progress-bar { height: 5px; }
+  .time-row { font-size: 10px; margin-top: 4px; }
+  .meta-row { margin-bottom: 6px; font-size: 10px; }
+  .status-badge { padding: 4px 12px; font-size: 9px; }
+  .album-panel { flex-shrink: 0; display: flex; align-items: center; }
+  .gear { top: 8px; left: 8px; width: 36px; height: 36px; font-size: 16px; }
+}
+
+/* Pad landscape — keep side-by-side layout */
+@media (min-width: 701px) and (max-width: 1200px) and (orientation: landscape) and (min-height: 601px) {
+  .player { flex-direction: row; gap: 24px; max-width: 100vw; padding: 16px; }
+  .album-wrap { width: 240px; height: 240px; }
+  .card { padding: 24px; }
+  .song-title { font-size: 18px; }
+  .song-artist { font-size: 13px; }
+  .lyrics-box { max-height: 200px; padding: 10px 12px; margin-bottom: 10px; }
+  .controls { gap: 16px; margin-bottom: 12px; }
+  .play-btn { width: 60px; height: 60px; }
+  .play-btn svg { width: 26px; height: 26px; }
+  .ctrl-btn svg { width: 26px; height: 26px; }
+  .vol-slider { width: 160px; }
+}
+
+/* Pad portrait — vertical stack */
+@media (min-width: 701px) and (max-width: 1200px) and (orientation: portrait) {
   .player { flex-direction: column; gap: 16px; max-width: 520px; padding: 16px; }
   .album-panel { flex-shrink: 0; }
   .album-wrap { width: 220px; height: 220px; }
@@ -485,6 +549,7 @@ input:focus { border-color: rgba(255,255,255,0.25); }
 @media (max-width: 700px) {
   .player { flex-direction: column; gap: 0; background: rgba(255,255,255,0.08); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
     border-radius: 18px; padding: 20px 16px; box-shadow: 0 24px 80px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden;
+    max-width: 90vw; margin: 0 auto;
   }
   .player::before {
     content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
@@ -492,20 +557,20 @@ input:focus { border-color: rgba(255,255,255,0.25); }
   }
   .card { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0; padding: 0; box-shadow: none; border: none; overflow: visible; }
   .card::before { display: none; }
-  .song-title { font-size: 18px; }
-  .play-btn { width: 56px; height: 56px; }
-  .play-btn svg { width: 24px; height: 24px; }
-  .ctrl-btn { padding: 10px; }
-  .ctrl-btn svg { width: 24px; height: 24px; }
+  .song-title { font-size: 16px; }
+  .play-btn { width: 48px; height: 48px; }
+  .play-btn svg { width: 20px; height: 20px; }
+  .ctrl-btn { padding: 8px; }
+  .ctrl-btn svg { width: 22px; height: 22px; }
 
   .mobile-flip { display: block; position: relative; width: 100%; overflow: hidden; touch-action: pan-y; }
   .flip-track { display: flex; transition: transform 0.35s cubic-bezier(.4,0,.2,1); width: 200%; }
   .flip-page { width: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .flip-page.album-page { padding: 10px 0; }
   .flip-page.lyrics-page { padding: 0; }
-  .flip-page .album-wrap { width: 240px; height: 240px; margin: 0 auto; }
+  .flip-page .album-wrap { width: 200px; height: 200px; margin: 0 auto; }
   .flip-page .album-art .placeholder { font-size: 70px; }
-  .flip-page .lyrics-box { max-height: 320px; width: 100%; margin: 0; }
+  .flip-page .lyrics-box { max-height: 240px; width: 100%; margin: 0; }
   .flip-dots { display: flex; justify-content: center; gap: 8px; padding: 10px 0 2px; }
   .flip-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: all 0.3s; }
   .flip-dot.active { background: var(--accent); width: 20px; border-radius: 4px; }
