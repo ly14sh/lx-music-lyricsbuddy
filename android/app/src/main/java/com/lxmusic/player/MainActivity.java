@@ -3,6 +3,7 @@ package com.lxmusic.player;
 import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -20,6 +21,7 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private PowerManager.WakeLock wakeLock;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +55,8 @@ public class MainActivity extends Activity {
         WebView.setWebContentsDebuggingEnabled(true);
 
         webView.loadUrl("http://localhost/");
+
+        webView.addJavascriptInterface(this, "Android");
 
         hideSystemBars();
     }
@@ -94,8 +98,19 @@ public class MainActivity extends Activity {
             public void run() {
                 if (on) {
                     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    if (wakeLock == null) {
+                        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                        if (pm != null) {
+                            wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK, "lxmusic:keepScreenOn");
+                            wakeLock.acquire();
+                        }
+                    }
                 } else {
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    if (wakeLock != null && wakeLock.isHeld()) {
+                        wakeLock.release();
+                        wakeLock = null;
+                    }
                 }
             }
         });
