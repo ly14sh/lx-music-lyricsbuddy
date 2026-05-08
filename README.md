@@ -60,6 +60,12 @@ http://localhost:5173/?host=192.168.1.100&port=23330&theme=lavender
 | `GET /seek?offset=N` | 进度跳转 |
 | `GET /volume?volume=N` | 音量调节 |
 
+## 📸 截图
+
+![截图1](screenshot1.png)
+
+![截图2](screenshot2.png)
+
 ## 📄 License
 
 MIT
