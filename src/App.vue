@@ -151,6 +151,7 @@
           </div>
         </div>
         <button class="save" @click="onSave">Save</button>
+        <div class="version">v1.0.1</div>
       </div>
     </div>
   </div>
@@ -366,17 +367,17 @@ html, body, #app { height: 100%; overflow: hidden }
 }
 .time-row { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 8px; font-variant-numeric: tabular-nums; }
 
-.controls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; }
+.controls { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 16px; }
 .ctrl-btn {
   background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer;
-  transition: all 0.2s; padding: 8px; border-radius: 12px;
+  transition: all 0.2s; padding: 12px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
 }
 .ctrl-btn:hover { color: #fff; background: rgba(255,255,255,0.08); transform: scale(1.1); }
 .ctrl-btn:active { transform: scale(0.95); }
-.ctrl-btn svg { width: 20px; height: 20px; fill: currentColor; }
+.ctrl-btn svg { width: 28px; height: 28px; fill: currentColor; }
 .play-btn {
-  width: 56px; height: 56px; border-radius: 50%;
+  width: 68px; height: 68px; border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent3));
   border: none; color: #fff; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -384,21 +385,21 @@ html, body, #app { height: 100%; overflow: hidden }
 }
 .play-btn:hover { transform: scale(1.08); box-shadow: 0 12px 36px rgba(102,126,234,0.55); }
 .play-btn:active { transform: scale(0.95); }
-.play-btn svg { width: 24px; height: 24px; fill: currentColor; margin-left: 2px; }
+.play-btn svg { width: 28px; height: 28px; fill: currentColor; margin-left: 2px; }
 
 .volume-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; }
 .vol-icon { color: rgba(255,255,255,0.6); cursor: pointer; display: flex; align-items: center; }
 .vol-icon:hover { color: #fff; }
 .vol-icon svg { width: 16px; height: 16px; fill: currentColor; }
 .vol-slider {
-  -webkit-appearance: none; appearance: none; width: 100px; height: 4px;
-  background: rgba(255,255,255,0.15); border-radius: 2px; outline: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none; width: 180px; height: 3px;
+  background: rgba(255,255,255,0.15); border-radius: 1.5px; outline: none; cursor: pointer;
 }
 .vol-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+  -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%;
   background: #fff; cursor: pointer; box-shadow: 0 0 8px rgba(102,126,234,0.5);
 }
-.vol-slider::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; cursor: pointer; border: none; box-shadow: 0 0 8px rgba(102,126,234,0.5); }
+.vol-slider::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: #fff; cursor: pointer; border: none; box-shadow: 0 0 8px rgba(102,126,234,0.5); }
 .vol-val { font-size: 12px; color: rgba(255,255,255,0.35); min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
 
 .lyrics-box {
@@ -462,6 +463,23 @@ input:focus { border-color: rgba(255,255,255,0.25); }
   transition: filter 0.2s;
 }
 .save:hover { filter: brightness(1.1); }
+.version { text-align: right; color: rgba(255,255,255,0.25); font-size: 11px; margin-top: 10px; }
+
+/* Pad / Tablet — compact layout, no bottom clip */
+@media (min-width: 701px) and (max-width: 1200px) {
+  .player { flex-direction: column; gap: 16px; max-width: 520px; padding: 16px; }
+  .album-panel { flex-shrink: 0; }
+  .album-wrap { width: 220px; height: 220px; }
+  .card { padding: 20px; }
+  .song-title { font-size: 18px; }
+  .song-artist { font-size: 13px; }
+  .lyrics-box { max-height: 200px; padding: 10px 12px; margin-bottom: 10px; }
+  .controls { gap: 16px; margin-bottom: 12px; }
+  .play-btn { width: 60px; height: 60px; }
+  .play-btn svg { width: 26px; height: 26px; }
+  .ctrl-btn svg { width: 26px; height: 26px; }
+  .vol-slider { width: 160px; }
+}
 
 /* Mobile */
 @media (max-width: 700px) {
@@ -475,7 +493,10 @@ input:focus { border-color: rgba(255,255,255,0.25); }
   .card { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0; padding: 0; box-shadow: none; border: none; overflow: visible; }
   .card::before { display: none; }
   .song-title { font-size: 18px; }
-  .play-btn { width: 50px; height: 50px; }
+  .play-btn { width: 56px; height: 56px; }
+  .play-btn svg { width: 24px; height: 24px; }
+  .ctrl-btn { padding: 10px; }
+  .ctrl-btn svg { width: 24px; height: 24px; }
 
   .mobile-flip { display: block; position: relative; width: 100%; overflow: hidden; touch-action: pan-y; }
   .flip-track { display: flex; transition: transform 0.35s cubic-bezier(.4,0,.2,1); width: 200%; }
