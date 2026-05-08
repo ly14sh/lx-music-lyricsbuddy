@@ -1,0 +1,15 @@
+{
+  "appId": "com.lxmusic.player",
+  "appName": "LX Music",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

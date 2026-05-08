@@ -1,0 +1,22 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "com.lxmusic.player"
+    compileSdk = 35
+    defaultConfig {
+        applicationId "com.lxmusic.player"
+        minSdkVersion 23
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.6.1"
+}
