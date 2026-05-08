@@ -87,6 +87,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    @android.webkit.JavascriptInterface
+    public void setKeepScreenOn(boolean on) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (on) {
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            }
+        });
+    }
+
     private class AssetWebViewClient extends WebViewClient {
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {

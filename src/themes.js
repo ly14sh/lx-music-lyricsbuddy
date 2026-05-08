@@ -9,6 +9,10 @@ export const themes = [
     bg1: '#0a0f1a', bg2: '#152040', bg3: '#101830' },
   { name: 'green', label: '绿', accent: '#10b981', accent2: '#34d399', accent3: '#059669',
     bg1: '#0a1a12', bg2: '#153d28', bg3: '#102d1e' },
+  { name: 'pink', label: '粉', accent: '#ec4899', accent2: '#f472b6', accent3: '#db2777',
+    bg1: '#1a0a15', bg2: '#3d1530', bg3: '#2d1025' },
+  { name: 'cycle', label: '循环', accent: '#a855f7', accent2: '#a855f7', accent3: '#a855f7',
+    bg1: '#0f0c29', bg2: '#302b63', bg3: '#24243e' },
 ]
 
 export function getTheme(index) { return themes[index] || themes[0] }

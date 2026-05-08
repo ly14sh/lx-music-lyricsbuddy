@@ -143,15 +143,25 @@
         <label>Color Theme</label>
         <div class="colors">
           <div v-for="(t, i) in themes" :key="i" class="color-item" @click="editTheme = i">
-            <div class="circle" :class="{ sel: i === editTheme }"
+            <div v-if="t.name !== 'cycle'" class="circle" :class="{ sel: i === editTheme }"
               :style="{ background: `linear-gradient(135deg, ${t.accent}, ${t.accent3})` }">
+              <span v-if="i === editTheme">&#10003;</span>
+            </div>
+            <div v-else class="circle rainbow-circle" :class="{ sel: i === editTheme }">
               <span v-if="i === editTheme">&#10003;</span>
             </div>
             <span>{{ t.label }}</span>
           </div>
         </div>
         <button class="save" @click="onSave">Save</button>
-        <div class="version">v1.0.1</div>
+        <div class="keep-screen-row">
+          <span class="keep-label">💡 阻止熄屏</span>
+          <label class="switch">
+            <input type="checkbox" v-model="editKeepScreenOn" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="version">v1.0.2</div>
       </div>
     </div>
   </div>
@@ -169,6 +179,7 @@ const showSettings = ref(false)
 const editHost = ref(config.host)
 const editPort = ref(config.port)
 const editTheme = ref(config.themeIndex)
+const editKeepScreenOn = ref(localStorage.getItem('keepScreenOn') === 'true')
 
 const appRef = ref(null)
 const progressBar = ref(null)
@@ -185,7 +196,12 @@ const flipAreaWidth = ref(300)
 const lyricsTouchStartY = ref(0)
 const lyricsTouchStartX = ref(0)
 
-const theme = computed(() => themes[config.themeIndex] || themes[0])
+const cycleColors = ref(null)
+const theme = computed(() => {
+  const base = themes[config.themeIndex] || themes[0]
+  if (base.name === 'cycle' && cycleColors.value) return { ...base, ...cycleColors.value }
+  return base
+})
 
 const appStyle = computed(() => ({
   '--bg1': theme.value.bg1, '--bg2': theme.value.bg2, '--bg3': theme.value.bg3,
@@ -225,6 +241,24 @@ watch(currentLyricIndex, () => {
       }
     }
   })
+})
+
+// 6色循环：每首歌随机切换主题色
+const CYCLE_COLORS = [
+  { accent: '#667eea', accent2: '#a855f7', accent3: '#764ba2', bg1: '#0f0c29', bg2: '#302b63', bg3: '#24243e' },
+  { accent: '#ef4444', accent2: '#f97316', accent3: '#dc2626', bg1: '#1a0a0a', bg2: '#3d1515', bg3: '#2d1010' },
+  { accent: '#f59e0b', accent2: '#eab308', accent3: '#d97706', bg1: '#1a1508', bg2: '#3d3010', bg3: '#2d2410' },
+  { accent: '#10b981', accent2: '#34d399', accent3: '#059669', bg1: '#0a1a12', bg2: '#153d28', bg3: '#102d1e' },
+  { accent: '#3b82f6', accent2: '#06b6d4', accent3: '#2563eb', bg1: '#0a0f1a', bg2: '#152040', bg3: '#101830' },
+  { accent: '#ec4899', accent2: '#f472b6', accent3: '#db2777', bg1: '#1a0a15', bg2: '#3d1530', bg3: '#2d1025' },
+]
+function pickCycleColor() {
+  cycleColors.value = CYCLE_COLORS[Math.floor(Math.random() * CYCLE_COLORS.length)]
+}
+watch(() => state.name, (newName, oldName) => {
+  if (newName && newName !== oldName && themes[config.themeIndex]?.name === 'cycle') {
+    pickCycleColor()
+  }
 })
 
 function startDrag(e) {
@@ -288,13 +322,45 @@ function lyricsTouchStart(e) {
   lyricsTouchStartX.value = e.touches[0].clientX
 }
 
+function setKeepScreenOn(on) {
+  localStorage.setItem('keepScreenOn', on ? 'true' : 'false')
+  if (window.Android && window.Android.setKeepScreenOn) {
+    window.Android.setKeepScreenOn(on)
+  }
+}
+
 function onSave() {
   if (!editHost.value.trim()) return
   updateConfig({ host: editHost.value.trim(), port: editPort.value, themeIndex: editTheme.value })
+  // 选择循环主题时立即随机一个颜色
+  if (themes[editTheme.value]?.name === 'cycle') {
+    pickCycleColor()
+  } else {
+    cycleColors.value = null
+  }
+  setKeepScreenOn(editKeepScreenOn.value)
   showSettings.value = false
 }
 
-onMounted(() => { start() })
+onMounted(() => {
+  start()
+  // Restore keepScreenOn on app start
+  if (localStorage.getItem('keepScreenOn') === 'true' && window.Android && window.Android.setKeepScreenOn) {
+    window.Android.setKeepScreenOn(true)
+  }
+  // 强制旋转后刷新 CSS 媒体查询（configChanges 不重建 Activity 时 WebView 不会自动更新）
+  const mql = window.matchMedia('(orientation: portrait)')
+  const refreshViewport = () => {
+    const meta = document.querySelector('meta[name=viewport]')
+    if (meta) {
+      const content = meta.getAttribute('content')
+      meta.setAttribute('content', '')
+      requestAnimationFrame(() => meta.setAttribute('content', content))
+    }
+  }
+  mql.addEventListener('change', refreshViewport)
+  window.addEventListener('orientationchange', () => setTimeout(refreshViewport, 100))
+})
 onUnmounted(() => { stop() })
 </script>
 
@@ -473,6 +539,14 @@ input:focus { border-color: rgba(255,255,255,0.25); }
   align-items: center; justify-content: center; color: #fff; font-size: 14px;
 }
 .circle.sel { box-shadow: 0 0 0 2.5px #fff; }
+.rainbow-circle {
+  background: conic-gradient(from var(--rainbow-angle, 0deg), #ef4444, #f59e0b, #10b981, #3b82f6, #a855f7, #ec4899, #ef4444);
+  animation: rainbow-spin 3s linear infinite;
+}
+@keyframes rainbow-spin { to { --rainbow-angle: 360deg; } }
+@property --rainbow-angle {
+  syntax: '<angle>'; initial-value: 0deg; inherits: false;
+}
 .save {
   margin-top: 24px; width: 100%; padding: 12px; border: none; border-radius: 12px;
   color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
@@ -481,6 +555,16 @@ input:focus { border-color: rgba(255,255,255,0.25); }
 }
 .save:hover { filter: brightness(1.1); }
 .version { text-align: right; color: rgba(255,255,255,0.25); font-size: 11px; margin-top: 10px; }
+
+/* Keep screen on toggle */
+.keep-screen-row { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; padding: 0 2px; }
+.keep-label { font-size: 13px; color: rgba(255,255,255,0.7); }
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.15); border-radius: 24px; transition: 0.3s; }
+.slider::before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+.switch input:checked + .slider { background: linear-gradient(135deg, var(--accent), var(--accent3)); }
+.switch input:checked + .slider::before { transform: translateX(20px); }
 
 /* Phone landscape — compact side-by-side */
 @media (orientation: landscape) and (max-height: 600px) {
