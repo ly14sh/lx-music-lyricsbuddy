@@ -1,6 +1,11 @@
 <template>
   <div class="app" ref="appRef" :style="appStyle">
     <button class="gear" @click="showSettings = true" title="Settings">&#9881;</button>
+    <!-- <span class="debug-mode debug-desktop">桌面端</span>
+    <span class="debug-mode debug-phone-portrait">手机竖屏</span>
+    <span class="debug-mode debug-phone-landscape">手机横屏</span>
+    <span class="debug-mode debug-tablet-portrait">平板竖屏</span>
+    <span class="debug-mode debug-tablet-landscape">平板横屏</span> -->
 
     <div class="player">
       <!-- Mobile flip -->
@@ -54,7 +59,7 @@
         <div class="song-info">
           <div class="song-title">{{ state.name || 'Unknown Track' }}</div>
           <div class="song-artist">{{ state.singer || 'Unknown Artist' }}</div>
-          <div class="song-album" v-if="state.albumName">Album: {{ state.albumName }}</div>
+          <div class="song-album" v-if="state.albumName">{{ state.albumName }}</div>
         </div>
 
         <div class="progress-section">
@@ -70,20 +75,20 @@
         </div>
 
         <div class="controls">
-          <button class="ctrl-btn" @click="prev" title="Previous">
+          <button class="ctrl-btn ctrl-nav" @click="prev" title="Previous">
             <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
           </button>
-          <button class="ctrl-btn" @click="seekBack" title="-10s">
+          <button class="ctrl-btn ctrl-seek" @click="seekBack" title="-10s">
             <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
           </button>
           <button class="play-btn" @click="togglePlay">
             <svg v-if="state.status === 'playing'" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
             <svg v-else viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </button>
-          <button class="ctrl-btn" @click="seekForward" title="+10s">
+          <button class="ctrl-btn ctrl-seek" @click="seekForward" title="+10s">
             <svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/></svg>
           </button>
-          <button class="ctrl-btn" @click="next" title="Next">
+          <button class="ctrl-btn ctrl-nav" @click="next" title="Next">
             <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
           </button>
         </div>
@@ -161,7 +166,7 @@
             <span class="slider"></span>
           </label>
         </div>
-        <div class="version">v1.0.2</div>
+        <div class="version">v1.0.3</div>
       </div>
     </div>
   </div>
@@ -226,21 +231,37 @@ const flipTrackStyle = computed(() => {
   return { transform: `translateX(${offset}%)` }
 })
 
-watch(currentLyricIndex, () => {
-  nextTick(() => {
-    const pairs = [
-      { box: lyricsBox.value, el: activeLyricEl.value },
-      { box: mobileLyricsBox.value, el: activeMobileLyricEl.value },
-    ]
-    for (const { box, el } of pairs) {
-      if (box && el) {
-        const boxRect = box.getBoundingClientRect()
-        const elRect = el.getBoundingClientRect()
+// ===== 修复 2: 歌词滚动防抖 + 只滚动可见区域 =====
+let scrollTimer = null
+let lastScrollIndex = -1
+
+watch(currentLyricIndex, (newIdx, oldIdx) => {
+  // 避免重复滚动到同一行
+  if (newIdx === oldIdx || newIdx === lastScrollIndex) return
+
+  if (scrollTimer) clearTimeout(scrollTimer)
+
+  scrollTimer = setTimeout(() => {
+    lastScrollIndex = newIdx
+    nextTick(() => {
+      // 根据当前视口宽度判断哪个歌词框可见
+      const isMobile = window.innerWidth <= 700
+      const visibleBox = isMobile ? mobileLyricsBox.value : lyricsBox.value
+      const visibleEl = isMobile ? activeMobileLyricEl.value : activeLyricEl.value
+
+      if (visibleBox && visibleEl) {
+        const boxRect = visibleBox.getBoundingClientRect()
+        const elRect = visibleEl.getBoundingClientRect()
         const offset = elRect.top - boxRect.top - boxRect.height / 2 + elRect.height / 2
-        box.scrollBy({ top: offset, behavior: 'smooth' })
+
+        // 使用 scrollTo 替代 scrollBy，更精确
+        visibleBox.scrollTo({
+          top: visibleBox.scrollTop + offset,
+          behavior: 'smooth'
+        })
       }
-    }
-  })
+    })
+  }, 100) // 100ms 防抖
 })
 
 // 6色循环：每首歌随机切换主题色
@@ -365,7 +386,7 @@ onUnmounted(() => { stop() })
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* 修复 7: Google Fonts 已移至 index.html link 标签预加载 */
 * { margin: 0; padding: 0; box-sizing: border-box }
 html, body, #app { height: 100%; overflow: hidden }
 </style>
@@ -374,7 +395,7 @@ html, body, #app { height: 100%; overflow: hidden }
 .app {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
-  font-family: 'Inter', 'Microsoft YaHei', system-ui, sans-serif;
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
   color: #fff; overflow: hidden; position: relative;
 }
 
@@ -387,6 +408,9 @@ html, body, #app { height: 100%; overflow: hidden }
   transition: all 0.2s;
 }
 .gear:hover { color: #fff; background: rgba(255,255,255,0.15); }
+
+.debug-mode { display: none; position: fixed; top: 20px; left: 48px; z-index: 50; font-size: 10px; color: rgba(255,255,255,0.45); pointer-events: none; background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 8px; }
+.debug-desktop { display: block; }
 
 .player { display: flex; flex-direction: row; gap: 32px; align-items: center; max-width: 780px; width: 100%; padding: 20px; }
 
@@ -452,13 +476,15 @@ html, body, #app { height: 100%; overflow: hidden }
 
 .controls { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 16px; }
 .ctrl-btn {
-  background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer;
-  transition: all 0.2s; padding: 12px; border-radius: 14px;
+  background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer; outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s; padding: 14px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
 }
-.ctrl-btn:hover { color: #fff; background: rgba(255,255,255,0.08); transform: scale(1.1); }
-.ctrl-btn:active { transform: scale(0.95); }
-.ctrl-btn svg { width: 28px; height: 28px; fill: currentColor; }
+.ctrl-btn:active { color: #fff; background: rgba(255,255,255,0.08); transform: scale(0.95); }
+.ctrl-btn svg { width: 34px; height: 34px; fill: currentColor; }
+.ctrl-nav svg { width: 37px; height: 37px; }
+.ctrl-seek svg { width: 38px; height: 38px; }
 .play-btn {
   width: 68px; height: 68px; border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent3));
@@ -473,16 +499,23 @@ html, body, #app { height: 100%; overflow: hidden }
 .volume-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; }
 .vol-icon { color: rgba(255,255,255,0.6); cursor: pointer; display: flex; align-items: center; }
 .vol-icon:hover { color: #fff; }
-.vol-icon svg { width: 16px; height: 16px; fill: currentColor; }
+.vol-icon svg { width: 26px; height: 26px; fill: currentColor; }
 .vol-slider {
-  -webkit-appearance: none; appearance: none; width: 180px; height: 3px;
-  background: rgba(255,255,255,0.15); border-radius: 1.5px; outline: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none; width: 180px;
+  background: transparent; outline: none; cursor: pointer; padding: 0; margin: 0;
+}
+.vol-slider::-webkit-slider-runnable-track {
+  height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px;
 }
 .vol-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%;
+  -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%;
   background: #fff; cursor: pointer; box-shadow: 0 0 8px rgba(102,126,234,0.5);
+  margin-top: -4.5px;
 }
-.vol-slider::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: #fff; cursor: pointer; border: none; box-shadow: 0 0 8px rgba(102,126,234,0.5); }
+.vol-slider::-moz-range-track {
+  height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; border: none;
+}
+.vol-slider::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: #fff; cursor: pointer; border: none; box-shadow: 0 0 8px rgba(102,126,234,0.5); }
 .vol-val { font-size: 12px; color: rgba(255,255,255,0.35); min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
 
 .lyrics-box {
@@ -493,7 +526,7 @@ html, body, #app { height: 100%; overflow: hidden }
 .lyrics-box::-webkit-scrollbar { width: 4px; }
 .lyrics-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 .lyric-line { font-size: 13px; line-height: 1.9; color: rgba(255,255,255,0.35); text-align: center; transition: all 0.3s; padding: 0 8px; }
-.lyric-line.active { color: #fff; font-weight: 600; font-size: 15px; text-shadow: 0 0 20px rgba(102,126,234,0.5); }
+.lyric-line.active { color: #fff; font-weight: 600; font-size: 20px; text-shadow: 0 0 20px rgba(102,126,234,0.5); }
 .lyric-line.past { color: rgba(255,255,255,0.35); opacity: 0.5; }
 
 .meta-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 12px; color: rgba(255,255,255,0.35); }
@@ -518,7 +551,8 @@ html, body, #app { height: 100%; overflow: hidden }
 }
 .dialog {
   background: #1e1e2e; border-radius: 20px; padding: 24px;
-  width: 320px; max-width: 90vw; border: 1px solid rgba(255,255,255,0.1);
+  width: 320px; max-width: 90vw; max-height: 90vh; overflow-y: auto;
+  border: 1px solid rgba(255,255,255,0.1);
   animation: fadeIn 0.3s ease;
 }
 .dialog-head { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
@@ -567,7 +601,9 @@ input:focus { border-color: rgba(255,255,255,0.25); }
 .switch input:checked + .slider::before { transform: translateX(20px); }
 
 /* Phone landscape — compact side-by-side */
-@media (orientation: landscape) and (max-height: 600px) {
+@media (orientation: landscape) and (max-height: 500px) {
+  .debug-desktop, .debug-phone-portrait { display: none !important; }
+  .debug-phone-landscape { display: block; }
   .app { padding: 0; }
   .player { flex-direction: row; gap: 16px; max-width: 100vw; width: 100%; padding: 10px 14px; align-items: center; }
   .album-wrap { width: 140px; height: 140px; }
@@ -579,15 +615,19 @@ input:focus { border-color: rgba(255,255,255,0.25); }
   .song-info { margin-bottom: 10px; }
   .lyrics-box { max-height: 100px; padding: 6px 8px; margin-bottom: 6px; }
   .lyric-line { font-size: 11px; line-height: 1.6; }
-  .lyric-line.active { font-size: 12px; }
-  .controls { gap: 12px; margin-bottom: 6px; }
+  .lyric-line.active { font-size: 18px; }
+  .controls { gap: 24px; margin-bottom: 6px; }
   .play-btn { width: 46px; height: 46px; }
   .play-btn svg { width: 20px; height: 20px; }
-  .ctrl-btn { padding: 6px; }
-  .ctrl-btn svg { width: 20px; height: 20px; }
-  .vol-slider { width: 200px; height: 2px; }
-  .vol-slider::-webkit-slider-thumb { width: 8px; height: 8px; }
-  .vol-slider::-moz-range-thumb { width: 8px; height: 8px; }
+  .ctrl-btn { padding: 8px; }
+  .ctrl-btn svg { width: 24px; height: 24px; }
+  .ctrl-nav svg { width: 36px; height: 36px; }
+  .ctrl-seek svg { width: 28px; height: 28px; }
+  .vol-slider { width: 200px; }
+  .vol-slider::-webkit-slider-runnable-track { height: 3px; }
+  .vol-slider::-webkit-slider-thumb { width: 11px; height: 11px; margin-top: -4px; }
+  .vol-slider::-moz-range-track { height: 3px; }
+  .vol-slider::-moz-range-thumb { width: 11px; height: 11px; }
   .vol-val { display: none; }
   .progress-section { margin-bottom: 8px; }
   .progress-bar { height: 5px; }
@@ -599,38 +639,67 @@ input:focus { border-color: rgba(255,255,255,0.25); }
 }
 
 /* Pad landscape — keep side-by-side layout */
-@media (min-width: 701px) and (max-width: 1200px) and (orientation: landscape) and (min-height: 601px) {
+@media (min-width: 501px) and (max-width: 1200px) and (orientation: landscape) and (min-height: 501px) {
+  .debug-desktop { display: none !important; }
+  .debug-tablet-landscape { display: block; }
   .player { flex-direction: row; gap: 24px; max-width: 100vw; padding: 16px; }
   .album-wrap { width: 240px; height: 240px; }
   .card { padding: 24px; }
   .song-title { font-size: 18px; }
   .song-artist { font-size: 13px; }
   .lyrics-box { max-height: 200px; padding: 10px 12px; margin-bottom: 10px; }
-  .controls { gap: 16px; margin-bottom: 12px; }
+  .controls { gap: 28px; margin-bottom: 12px; }
   .play-btn { width: 60px; height: 60px; }
-  .play-btn svg { width: 26px; height: 26px; }
-  .ctrl-btn svg { width: 26px; height: 26px; }
+  .play-btn svg { width: 30px; height: 30px; }
+  .ctrl-btn { padding: 12px; }
+  .ctrl-btn svg { width: 32px; height: 32px; }
+  .ctrl-nav svg { width: 40px; height: 40px; }
+  .ctrl-seek svg { width: 36px; height: 36px; }
   .vol-slider { width: 160px; }
 }
 
 /* Pad portrait — vertical stack */
-@media (min-width: 701px) and (max-width: 1200px) and (orientation: portrait) {
-  .player { flex-direction: column; gap: 16px; max-width: 520px; padding: 16px; }
-  .album-panel { flex-shrink: 0; }
-  .album-wrap { width: 220px; height: 220px; }
-  .card { padding: 20px; }
+@media (min-width: 501px) and (max-width: 1200px) and (orientation: portrait) {
+  .debug-desktop { display: none !important; }
+  .debug-tablet-portrait { display: block; }
+  .player { flex-direction: column; gap: 0; background: rgba(255,255,255,0.08); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border-radius: 18px; padding: 28px 24px; box-shadow: 0 24px 80px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden;
+    max-width: 90vw; margin: 0 auto;
+  }
+  .player::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle at 30% 20%, rgba(102,126,234,0.08) 0%, transparent 50%); pointer-events: none;
+  }
+  .card { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0; padding: 0; box-shadow: none; border: none; overflow: visible; }
+  .card::before { display: none; }
   .song-title { font-size: 18px; }
   .song-artist { font-size: 13px; }
-  .lyrics-box { max-height: 200px; padding: 10px 12px; margin-bottom: 10px; }
-  .controls { gap: 16px; margin-bottom: 12px; }
   .play-btn { width: 60px; height: 60px; }
-  .play-btn svg { width: 26px; height: 26px; }
-  .ctrl-btn svg { width: 26px; height: 26px; }
-  .vol-slider { width: 160px; }
+  .play-btn svg { width: 30px; height: 30px; }
+  .ctrl-btn { padding: 12px; }
+  .ctrl-btn svg { width: 32px; height: 32px; }
+  .ctrl-nav svg { width: 42px; height: 42px; }
+  .ctrl-seek svg { width: 36px; height: 36px; }
+
+  .mobile-flip { display: block; position: relative; width: 100%; overflow: hidden; touch-action: pan-y; }
+  .flip-track { display: flex; transition: transform 0.35s cubic-bezier(.4,0,.2,1); width: 200%; }
+  .flip-page { width: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .flip-page.album-page { padding: 16px 0; }
+  .flip-page.lyrics-page { padding: 0; }
+  .flip-page .album-wrap { width: 300px; height: 300px; margin: 0 auto; }
+  .flip-page .album-art .placeholder { font-size: 90px; }
+  .flip-page .lyrics-box { max-height: 360px; width: 100%; margin: 0; }
+  .flip-dots { display: flex; justify-content: center; gap: 8px; padding: 10px 0 2px; }
+  .flip-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: all 0.3s; }
+  .flip-dot.active { background: var(--accent); width: 20px; border-radius: 4px; }
+  .album-panel { display: none; }
+  .card > .lyrics-box { display: none; }
 }
 
 /* Mobile */
-@media (max-width: 700px) {
+@media (max-width: 500px) {
+  .debug-desktop { display: none !important; }
+  .debug-phone-portrait { display: block; }
   .player { flex-direction: column; gap: 0; background: rgba(255,255,255,0.08); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
     border-radius: 18px; padding: 20px 16px; box-shadow: 0 24px 80px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden;
     max-width: 90vw; margin: 0 auto;
@@ -646,6 +715,8 @@ input:focus { border-color: rgba(255,255,255,0.25); }
   .play-btn svg { width: 20px; height: 20px; }
   .ctrl-btn { padding: 8px; }
   .ctrl-btn svg { width: 22px; height: 22px; }
+  .ctrl-nav svg { width: 36px; height: 36px; }
+  .ctrl-seek svg { width: 32px; height: 32px; }
 
   .mobile-flip { display: block; position: relative; width: 100%; overflow: hidden; touch-action: pan-y; }
   .flip-track { display: flex; transition: transform 0.35s cubic-bezier(.4,0,.2,1); width: 200%; }
@@ -663,8 +734,18 @@ input:focus { border-color: rgba(255,255,255,0.25); }
   .card > .lyrics-box { display: none; }
 }
 
-@media (min-width: 701px) and (max-width: 1000px) {
+@media (min-width: 501px) and (max-width: 1000px) {
   .album-wrap { width: 260px; height: 260px; }
+}
+
+/* 修复 6: 低端设备 backdrop-filter 降级 */
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .player,
+  .gear {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
